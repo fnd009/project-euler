@@ -13,6 +13,12 @@
 
 ; NOTE: Once the chain starts the terms are allowed to go above one million.
 
+(import '(java.util.concurrent Executors))
+
+(def collatz-seq-count
+  (memoize (fn [n]
+             ())))
+
 (def collatz-seq
   (memoize (fn [n]
              (if (= n 1)
@@ -25,14 +31,36 @@
   [n]
   (lazy-seq (cons (hash-map n (count (collatz-seq n))) (get-collatz-seq (inc (inc n))))))
 
-(defn max-collatz-seq
-  [n m]
-  (if (<= n 10000)
+
+(defn get-max [c]
+  (apply max-key val (apply merge c)))
+
+(defn get-max-collatz-seq
+  [n l m]
+  (if (<= n l)
     (let [c (count (collatz-seq n))]
       (if (> c (val (first m)))
-        (recur (inc (inc n)) (hash-map n c))
-        (recur (inc (inc n)) m)))
+        (recur (inc (inc n)) l (hash-map n c))
+        (recur (inc (inc n)) l m)))
     m))
+
+(def default-set '{1 1})
+
+(defn concurrent-collatz-seq [n l]
+  (let [refs  (map ref (repeat n default-set))
+        pool  (Executors/newFixedThreadPool n)
+        tasks (map (fn [n]
+                      (fn []
+                        (dosync
+                          (ref-set (nth refs n) (get-max-collatz-seq (inc (* n l)) (* (inc n) l) default-set)))))
+                   (range n))]
+    (doseq [future (.invokeAll pool tasks)]
+      (.get future))
+    (.shutdown pool)
+    (get-max (map deref refs))))
+ 
+(concurrent-collatz-seq 10 1000)
+
 
 (defn longest-collatz-seq
   []
@@ -40,12 +68,17 @@
   ;(apply max-key val (apply merge (take 100 (get-collatz-seq 1))))
   
   ; Using max comparison
-  (max-collatz-seq 1 '{1 1})
+  ;(max-collatz-seq 1 '{1 1})
+  
+  ; Using parallel processing / multi-threading
+  (concurrent-collatz-seq 10)
+  
   )
 
 (defn run
   []
   (println (longest-collatz-seq))) ; Ans:837799
+
 
 
 ;(time (apply max-key val (apply merge (take 1000000 (get-collatz-seq 1)))))

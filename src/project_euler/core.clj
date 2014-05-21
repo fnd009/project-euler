@@ -18,4 +18,4 @@
   "Check out https://projecteuler.net for the questions."
   [& args]
   (println "Project Euler started!")
-  (p002/run))
+  (p014/run))
