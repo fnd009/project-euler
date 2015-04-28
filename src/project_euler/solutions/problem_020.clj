@@ -17,5 +17,6 @@
   (reduce +' (explode-to-digits (fac n))))
 
 (defn run
-  []
-  (println (factorial-digit-sum 100)))
+  [i]
+  (let [n i]
+  (println (factorial-digit-sum n))))
